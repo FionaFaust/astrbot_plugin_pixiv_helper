@@ -1,0 +1,28 @@
+# AstrBot 插件元数据
+name: astrbot_plugin_pixiv_helper
+display_name: 艾珀莉亚的Pixiv图片小助手
+short_desc: Pixiv 定时推图 / 按 ID 取图 / 特辑获取
+desc: |
+  Pixiv 图片小助手：通过 pixiv.re 镜像图床与 pixivision 官方杂志获取 Pixiv 插画，
+  支持定时向白名单群聊推送随机热门插画、按作品 ID 获取指定插画（支持多页）、
+  获取 pixivision 最新主题特辑插画。
+
+  功能：
+  1. 定时推送：按可配置间隔向白名单群聊发送随机抽选的 Pixiv 图片（热门/较热门）；
+  2. /pixiv 作品ID —— 获取指定插画（支持多页）；
+  3. /pixiv 特辑 —— 获取 pixivision 最新主题特辑插画；
+  4. 支持 R-18/R-18G/AIGC 筛选配置、图片数量、简介附带、合并转发等。
+
+  注意：R-18/R-18G 内容受 pixivision 数据源限制（特辑主要为全年龄内容），
+  开启后将从可获取的抽选池中尽量包含相关作品。
+version: 1.0.0
+author: 艾珀莉亚
+repo: https://github.com/FionaFaust/astrbot_plugin_pixiv_helper
+astrbot_version: ">=4.16"
+support_platforms:
+  - aiocqhttp
+tags:
+  - pixiv
+  - image
+  - wallpaper
+  - push

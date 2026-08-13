@@ -1,0 +1,78 @@
+{
+  "enable_push": {
+    "description": "是否开启定时推图功能",
+    "type": "bool",
+    "default": true
+  },
+  "push_interval": {
+    "description": "定时推送时间间隔（秒）",
+    "type": "int",
+    "default": 3600,
+    "hint": "默认 3600 秒（1 小时）"
+  },
+  "push_count": {
+    "description": "每次推送图片数量（上限 25）",
+    "type": "int",
+    "default": 15,
+    "hint": "1-25 张"
+  },
+  "whitelist_groups": {
+    "description": "定时推送目标群聊白名单",
+    "type": "list",
+    "default": [],
+    "hint": "添加允许接收推送的 QQ 群号"
+  },
+  "bot_qq": {
+    "description": "机器人自身 QQ 号（用于合并转发，建议填写）",
+    "type": "string",
+    "default": "",
+    "hint": "填写机器人 QQ 号可确保合并转发聊天记录正常发送"
+  },
+  "enable_r18": {
+    "description": "是否开启 R-18 图片（默认关闭）",
+    "type": "bool",
+    "default": false,
+    "hint": "开启后抽选池允许包含 R-18 作品"
+  },
+  "enable_r18g": {
+    "description": "是否开启 R-18G 图片（默认关闭）",
+    "type": "bool",
+    "default": false,
+    "hint": "开启后抽选池允许包含 R-18G 作品"
+  },
+  "enable_aigc": {
+    "description": "是否开启 AIGC/AI 生成图片（默认关闭）",
+    "type": "bool",
+    "default": false,
+    "hint": "开启后抽选池允许包含 AI 生成作品"
+  },
+  "show_info": {
+    "description": "发送图片时附带简介（ID/标题/作者等）",
+    "type": "bool",
+    "default": true
+  },
+  "use_forward": {
+    "description": "查询功能是否以转发聊天记录方式发送（QQ 合并转发）",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后 /pixiv 查询尽量使用合并转发形式"
+  },
+  "push_use_forward": {
+    "description": "定时推送图片是否整合为一条聊天记录发送（默认开）",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后定时推送的多张图片将整合为一个聊天记录发送到群"
+  },
+  "enable_cache_cleanup": {
+    "description": "是否定时清理图片缓存（默认开启）",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后按下方间隔自动清理下载的临时图片"
+  },
+  "cache_cleanup_interval": {
+    "description": "图片缓存清理间隔（秒）",
+    "type": "int",
+    "default": 3600,
+    "hint": "默认 3600 秒（1 小时）"
+  }
+}
