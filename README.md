@@ -14,8 +14,8 @@
 
 ```
 /pixiv 帮助
-/pixiv 作品ID        （如 /pixiv 143138124）
-/pixiv 作品ID 2      （获取第 2 页）
+/pixiv 作品ID        （自动预览前 3 页）
+/pixiv 作品ID 页码   （只获取指定页，如 /pixiv 143138124 2）
 /pixiv 特辑
 ```
 

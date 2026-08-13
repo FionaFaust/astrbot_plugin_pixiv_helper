@@ -213,8 +213,16 @@ class PixivHelperPlugin(Star):
             n = 15
         return max(1, min(MAX_PUSH_COUNT, n))
 
+    def _max_forward_nodes(self) -> int:
+        """合并转发最大节点数（超过则普通发送，避免 NapCat retcode 1200）"""
+        try:
+            n = int(self.config.get("forward_max_nodes", 5) or 5)
+        except Exception:
+            n = 5
+        return max(1, n)
+
     async def _send_forward(self, event: AstrMessageEvent, items: list):
-        """发送图片（群聊用合并转发整合为一条，私聊/失败回退普通发送）"""
+        """发送图片（群聊用合并转发主动发送并捕获失败回退；私聊普通发送）"""
         # 缓存机器人自身 ID
         try:
             sid = event.get_self_id()
@@ -229,6 +237,9 @@ class PixivHelperPlugin(Star):
         except Exception:
             pass
         use_fwd = self.config.get("use_forward", True) and is_group
+        # 节点数超过上限时改用普通发送（避免 NapCat 限制）
+        if use_fwd and len(items) > self._max_forward_nodes():
+            use_fwd = False
 
         if not use_fwd:
             # 私聊/关闭合并转发：普通逐条发送
@@ -239,33 +250,40 @@ class PixivHelperPlugin(Star):
                     yield event.image_result(it["image"])
             return
 
-        # 群聊合并转发：所有内容整合为一条聊天记录
-        nodes = []
-        for it in items:
-            content = []
-            if self.config.get("show_info", True):
-                info = f"Pixiv ID: {it.get('id', '')}"
-                if it.get("title"):
-                    info += f"\n标题: {it['title']}"
-                if it.get("author"):
-                    info += f"\n作者: {it['author']}"
-                content.append(Comp.Plain(info))
-            if it.get("image") and Path(it["image"]).exists():
-                content.append(Comp.Image(file=it["image"]))
-            nodes.append(Comp.Node(
-                uin=self._bot_id,
-                name="Pixiv 小助手",
-                content=content,
-            ))
-        try:
-            forward = Comp.Nodes(nodes=nodes) if hasattr(Comp, "Nodes") else None
-            if forward:
-                yield event.chain_result([forward])
-            else:
-                yield event.chain_result(nodes)
+        # 群聊：主动发送合并转发（捕获 NapCat 失败并回退）
+        adapter = self._get_adapter()
+        if not adapter:
+            for it in items:
+                if self.config.get("show_info", True):
+                    yield event.plain_result(f"Pixiv ID: {it.get('id', '')}\n标题: {it.get('title', '')}\n作者: {it.get('author', '')}")
+                if it.get("image") and Path(it["image"]).exists():
+                    yield event.image_result(it["image"])
             return
+        bot_uin = str(self.config.get("bot_qq", "") or "").strip() or str(getattr(adapter, "client_self_id", "") or "10000")
+        try:
+            nodes = []
+            for it in items:
+                content = []
+                if self.config.get("show_info", True):
+                    info = f"Pixiv ID: {it.get('id', '')}"
+                    if it.get("title"):
+                        info += f"\n标题: {it['title']}"
+                    if it.get("author"):
+                        info += f"\n作者: {it['author']}"
+                    content.append(Comp.Plain(info))
+                if it.get("image") and Path(it["image"]).exists():
+                    content.append(Comp.Image(file=it["image"]))
+                nodes.append(Comp.Node(uin=bot_uin, name="Pixiv 小助手", content=content))
+            await AiocqhttpMessageEvent.send_message(
+                bot=adapter.bot,
+                message_chain=MessageChain([Comp.Nodes(nodes)]),
+                is_group=True,
+                session_id=str(event.get_group_id()),
+            )
+            return  # 合并转发已主动发送成功
         except Exception as e:
             logger.error(f"合并转发发送失败，回退普通发送: {e}")
+        # 回退普通发送
         for it in items:
             if self.config.get("show_info", True):
                 yield event.plain_result(f"Pixiv ID: {it.get('id', '')}\n标题: {it.get('title', '')}\n作者: {it.get('author', '')}")
@@ -307,22 +325,26 @@ class PixivHelperPlugin(Star):
             return content
 
         if self.config.get("push_use_forward", True):
-            try:
-                nodes = [
-                    Comp.Node(uin=bot_uin, name="Pixiv 小助手", content=build_content(it))
-                    for it in items
-                ]
-                forward = Comp.Nodes(nodes)
-                chain = MessageChain([forward])
-                await AiocqhttpMessageEvent.send_message(
-                    bot=adapter.bot,
-                    message_chain=chain,
-                    is_group=True,
-                    session_id=str(group_id),
-                )
-                return
-            except Exception as e:
-                logger.error(f"合并转发失败，回退普通发送: {e}")
+            # 节点数超过上限时改用普通发送（避免 NapCat 限制）
+            if len(items) > self._max_forward_nodes():
+                pass
+            else:
+                try:
+                    nodes = [
+                        Comp.Node(uin=bot_uin, name="Pixiv 小助手", content=build_content(it))
+                        for it in items
+                    ]
+                    forward = Comp.Nodes(nodes)
+                    chain = MessageChain([forward])
+                    await AiocqhttpMessageEvent.send_message(
+                        bot=adapter.bot,
+                        message_chain=chain,
+                        is_group=True,
+                        session_id=str(group_id),
+                    )
+                    return
+                except Exception as e:
+                    logger.error(f"合并转发失败，回退普通发送: {e}")
 
         # 普通逐条发送
         for it in items:
@@ -462,9 +484,9 @@ class PixivHelperPlugin(Star):
                 yield r
             return
 
-        # 作品 ID（可能带页码）
+        # 作品 ID（不带页码自动获取全部页，带页码只获取指定页）
         if a1.isdigit():
-            page = 1
+            page = 0
             if arg2.strip().isdigit():
                 page = int(arg2.strip())
             async for r in self._cmd_illust(event, a1, page):
@@ -473,24 +495,31 @@ class PixivHelperPlugin(Star):
 
         yield event.plain_result(f"❌ 无法识别: {a1}\n发送 /pixiv 帮助 查看用法")
 
-    async def _cmd_illust(self, event: AstrMessageEvent, illust_id: str, page: int = 1):
-        """按作品 ID 获取插画（支持多页）"""
-        yield event.plain_result(f"🖼️ 正在获取 Pixiv 作品 {illust_id} 第 {page} 页...")
-        # 尝试获取该页图片
-        path = await self._download_image(illust_id, page)
-        if not path:
-            # 尝试多页直到获取到
-            for p in range(1, 6):
-                if p == page:
-                    continue
-                path = await self._download_image(illust_id, p)
-                if path:
-                    page = p
-                    break
-        if not path:
+    async def _cmd_illust(self, event: AstrMessageEvent, illust_id: str, page: int = 0):
+        """按作品 ID 获取插画：/pixiv {id} {num} 指定页；{num} 留空自动预览前 3 页"""
+        if page > 0:
+            # 指定单页
+            yield event.plain_result(f"🖼️ 正在获取 Pixiv 作品 {illust_id} 第 {page} 页...")
+            path = await self._download_image(illust_id, page)
+            if not path:
+                yield event.plain_result(f"❌ 无法获取作品 {illust_id} 第 {page} 页（可能不存在或已被删除）")
+                return
+            items = [{"id": illust_id, "title": f"第 {page} 页", "author": "Pixiv", "image": path}]
+            async for r in self._send_forward(event, items):
+                yield r
+            return
+
+        # 不带页码：自动预览前 3 页
+        yield event.plain_result(f"🖼️ 正在预览作品 {illust_id} 的前 3 页...")
+        items = []
+        for p in range(1, 4):
+            path = await self._download_image(illust_id, p)
+            if not path:
+                break
+            items.append({"id": illust_id, "title": f"第 {p} 页", "author": "Pixiv", "image": path})
+        if not items:
             yield event.plain_result(f"❌ 无法获取作品 {illust_id}（可能不存在或已被删除）")
             return
-        items = [{"id": illust_id, "title": f"第 {page} 页", "author": "Pixiv", "image": path}]
         async for r in self._send_forward(event, items):
             yield r
 

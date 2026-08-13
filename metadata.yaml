@@ -15,7 +15,7 @@ desc: |
 
   注意：R-18/R-18G 内容受 pixivision 数据源限制（特辑主要为全年龄内容），
   开启后将从可获取的抽选池中尽量包含相关作品。
-version: 1.0.0
+version: 1.1.0
 author: 艾珀莉亚
 repo: https://github.com/FionaFaust/astrbot_plugin_pixiv_helper
 astrbot_version: ">=4.16"

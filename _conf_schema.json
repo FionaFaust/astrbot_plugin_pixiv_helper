@@ -55,13 +55,19 @@
     "description": "查询功能是否以转发聊天记录方式发送（QQ 合并转发）",
     "type": "bool",
     "default": true,
-    "hint": "开启后 /pixiv 查询尽量使用合并转发形式"
+    "hint": "合并转发在节点数不超过上限时可用"
   },
   "push_use_forward": {
-    "description": "定时推送图片是否整合为一条聊天记录发送（默认开）",
+    "description": "定时推送图片是否整合为一条聊天记录发送",
     "type": "bool",
     "default": true,
-    "hint": "开启后定时推送的多张图片将整合为一个聊天记录发送到群"
+    "hint": "合并转发在节点数不超过上限时可用"
+  },
+  "forward_max_nodes": {
+    "description": "合并转发最大节点数（超过则普通发送）",
+    "type": "int",
+    "default": 5,
+    "hint": "NapCat 对合并转发节点数有限制，超过该值自动改用普通发送"
   },
   "enable_cache_cleanup": {
     "description": "是否定时清理图片缓存（默认开启）",
