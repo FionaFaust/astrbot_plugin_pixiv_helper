@@ -545,6 +545,18 @@ class PixivHelperPlugin(Star):
         async for r in self._send_forward(event, items):
             yield r
 
+    @filter.command("rm")
+    async def rm(self, event: AstrMessageEvent):
+        """清除抽选池并重新获取一次"""
+        yield event.plain_result("🧹 正在清除抽选池并重新获取...")
+        self._pool = []
+        self._last_pool_time = 0
+        await self._refresh_pool(force=True)
+        if self._pool:
+            yield event.plain_result(f"✅ 抽选池已更新: {len(self._pool)} 个作品")
+        else:
+            yield event.plain_result("❌ 重新获取失败，抽选池为空")
+
     # ==================== 生命周期 ====================
 
     async def terminate(self):
