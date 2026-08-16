@@ -557,58 +557,6 @@ class PixivHelperPlugin(Star):
         else:
             yield event.plain_result("❌ 重新获取失败，抽选池为空")
 
-    @filter.command("今日涩图")
-    async def today_hentai(self, event: AstrMessageEvent):
-        """今日涩图：调用 Lolicon API 获取 3 张 R18 图并发送"""
-        yield event.plain_result("🔞 正在获取今日涩图...")
-        try:
-            async with httpx.AsyncClient(timeout=30, verify=False) as c:
-                resp = await c.post(
-                    "https://api.lolicon.app/setu/v2",
-                    json={"r18": 1, "num": 3},
-                    headers={"User-Agent": UA},
-                )
-                data = resp.json()
-                results = data.get("data", []) if data else []
-        except Exception as e:
-            logger.error(f"Lolicon 请求失败: {e}")
-            yield event.plain_result("❌ 获取失败，请检查日志")
-            return
-
-        if not results:
-            yield event.plain_result("❌ 没有获取到涩图")
-            return
-
-        items = []
-        for item in results:
-            url = (item.get("urls") or {}).get("original", "")
-            if not url:
-                continue
-            try:
-                async with httpx.AsyncClient(timeout=30, verify=False) as c:
-                    img = await c.get(url, headers={"User-Agent": UA})
-                    if img.status_code == 200 and img.content:
-                        fd = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False, prefix="lolicon_")
-                        fd.write(img.content)
-                        fd.close()
-                        self._downloaded.append((fd.name, time.time()))
-                        items.append({
-                            "id": str(item.get("pid", "")),
-                            "title": item.get("title", ""),
-                            "author": item.get("author", ""),
-                            "image": fd.name,
-                        })
-            except Exception as e:
-                logger.error(f"下载涩图失败: {e}")
-
-        if not items:
-            yield event.plain_result("❌ 图片下载失败")
-            return
-
-        yield event.plain_result(f"🔞 今日涩图 {len(items)} 张，正在发送...")
-        async for r in self._send_forward(event, items):
-            yield r
-
     # ==================== 生命周期 ====================
 
     async def terminate(self):
